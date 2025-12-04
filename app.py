@@ -4,245 +4,224 @@ import numpy as np
 import os
 import time
 import tempfile
+from PIL import Image
 
 # ==========================================
-# CONFIG & STYLING
+# 1. PAGE CONFIGURATION & STYLING
 # ==========================================
 st.set_page_config(
-    page_title="Visual Analytics Studio",
-    page_icon="🔬",
+    page_title="Unified Media Studio",
+    page_icon="🎨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for a professional look
+# Custom CSS (From App 2 for professional look)
 st.markdown("""
     <style>
-    /* Main container styling */
-    .stApp, .main {
-        background-color: #ffffff;
-    }
-    /* Headers */
-    h1, h2, h3 {
-        color: #000000 !important;
-        font-family: 'Helvetica Neue', sans-serif;
-    }
-    h1 {
-        font-weight: 700;
-        border-bottom: 2px solid #4e8cff;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-    }
-    /* General Text - Force Black */
-    p, div, span, label, li {
-        color: #000000 !important;
-    }
-    /* Cards/Containers */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #f8f9fa;
-        border-radius: 4px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        padding: 10px 20px;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #e3f2fd;
-        color: #000000 !important;
-        border-bottom: 2px solid #1976d2;
-    }
-    /* Metric styling */
-    [data-testid="stMetricValue"] {
-        font-size: 1.2rem;
-        color: #000000 !important;
-    }
-    /* Custom info box */
-    .info-box {
-        background-color: #e8f4f8;
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 5px solid #2E86C1;
-        margin-bottom: 20px;
-        color: #000000 !important;
-    }
+    .stApp { background-color: #ffffff; }
+    h1, h2, h3 { color: #000000 !important; font-family: 'Helvetica Neue', sans-serif; }
+    h1 { border-bottom: 2px solid #4e8cff; padding-bottom: 10px; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    .stTabs [data-baseweb="tab"] { background-color: #f8f9fa; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); padding: 10px 20px; }
+    .stTabs [aria-selected="true"] { background-color: #e3f2fd; color: #000000 !important; border-bottom: 2px solid #1976d2; }
+    [data-testid="stMetricValue"] { font-size: 1.2rem; color: #000000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# LOGIC FUNCTIONS
+# 2. HELPER FUNCTIONS
 # ==========================================
-
 def is_prime(num):
-    """Check if a number is prime."""
+    """Check if a number is prime (From App 2)"""
     if num <= 1: return False
     for i in range(2, int(num**0.5) + 1):
         if num % i == 0: return False
     return True
 
-# ==========================================
-# SIDEBAR CONTROLS
-# ==========================================
+def load_image_from_upload(uploaded_file):
+    """Decodes an image file to BGR (From App 1)"""
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    return cv2.imdecode(file_bytes, 1)
 
+# ==========================================
+# 3. SIDEBAR: INPUT SELECTION
+# ==========================================
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/10005/10005937.png", width=60)
-    st.title("Control Panel")
+    st.title("🎛️ Control Panel")
     
-    st.info("Upload a video in the main window to begin analysis.")
+    # Mode Selector
+    app_mode = st.radio("Select Source Type:", ["📷 Image Analysis", "🎥 Video Analysis"])
+    st.divider()
+    
+    source_img = None  # This will hold the final BGR image to be processed
+    video_path = None
+    file_details = {}
+
+    if app_mode == "📷 Image Analysis":
+        st.info("Upload a static image (JPG/PNG).")
+        uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
+        
+        if uploaded_file:
+            source_img = load_image_from_upload(uploaded_file)
+            file_details = {"name": uploaded_file.name, "size": uploaded_file.size}
+
+    elif app_mode == "🎥 Video Analysis":
+        st.info("Upload a video to extract frames.")
+        uploaded_file = st.file_uploader("Choose a video", type=["mp4", "avi", "mov"])
+        
+        if uploaded_file:
+            # Save temp file for OpenCV (From App 2)
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+            tfile.write(uploaded_file.read())
+            video_path = tfile.name
+            file_details = {"name": uploaded_file.name, "size": uploaded_file.size}
 
 # ==========================================
-# MAIN APP
+# 4. MAIN LAYOUT
 # ==========================================
+st.title("Unified Media Analytics Studio")
 
-st.title("Visual Analytics Studio")
-
-# --- Temp File Handling ---
-tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-video_path = None
-
-col1, col2 = st.columns([1, 2])
-
-# --- Input Handling ---
-with col1:
-    st.markdown("### Input Video")
-    uploaded_file = st.file_uploader("Upload MP4/AVI", type=["mp4", "avi", "mov"])
-    if uploaded_file is not None:
-        tfile.write(uploaded_file.read())
-        video_path = tfile.name
-
-if video_path:
-    with col1:
+# If Video Mode: Handle Player and Frame Extraction FIRST
+if app_mode == "🎥 Video Analysis" and video_path:
+    col_vid1, col_vid2 = st.columns([1, 2])
+    
+    with col_vid1:
         st.video(video_path)
     
-    # --- Frame Extraction ---
-    cap = cv2.VideoCapture(video_path)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    if total_frames > 0:
-        with col2:
-            st.markdown("### Frame Analysis")
-            frame_idx = st.slider("Select Frame to Analyze", 0, total_frames-1, 15)
-            
+    with col_vid2:
+        st.markdown("### Frame Selector")
+        cap = cv2.VideoCapture(video_path)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        if total_frames > 0:
+            frame_idx = st.slider("Select Frame", 0, total_frames-1, 0)
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             ret, frame = cap.read()
-            
             if ret:
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                st.image(frame_rgb, caption=f"Analysis Frame: {frame_idx}", width=400)
-                img = frame # Store BGR for processing
-            else:
-                st.error("Error reading frame.")
-                st.stop()
-    cap.release()
-    
-    st.divider()
+                source_img = frame # Set the video frame as the source image
+            cap.release()
+        else:
+            st.error("Could not read video frames.")
 
-    # --- Analysis Tabs ---
-    st.header("Processing Results")
+# ==========================================
+# 5. PROCESSING LOGIC (Unified for Image & Video)
+# ==========================================
+if source_img is not None:
+    # Convert BGR (OpenCV) to RGB (Streamlit/PIL) for consistent display
+    img_rgb = cv2.cvtColor(source_img, cv2.COLOR_BGR2RGB)
+    h, w, c = source_img.shape
+
+    st.divider()
+    
+    # We use the Tab structure from App 2 as it handles many features better
     tabs = st.tabs([
-        "📊 Properties", "👁️ Display", "⚫ B&W", 
-        "🔄 Rotate", "🪞 Mirror", "🔍 Detection", 
-        "✂️ Cuts", "🔢 Grid"
+        "📊 Overview", 
+        "🛠️ Filters & Edges", 
+        "🔄 Geometry", 
+        "🕵️ AI Detection", 
+        "✂️ Splitting",
+        "🔢 Prime Grid"
     ])
 
-    # Q4: Properties (Moved first for dashboard feel)
+    # --- TAB 1: OVERVIEW ---
     with tabs[0]:
-        st.subheader("Image Metadata")
-        h, w, c = img.shape
-        file_stats = os.stat(video_path)
-        size_mb = file_stats.st_size / (1024 * 1024)
+        st.subheader("Image Properties")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Width", f"{w} px")
+        c2.metric("Height", f"{h} px")
+        c3.metric("Channels", c)
         
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Width", f"{w} px")
-        m2.metric("Height", f"{h} px")
-        m3.metric("Channels", f"{c}")
-        m4.metric("File Size", f"{size_mb:.2f} MB")
+        # Calculate size in MB
+        size_mb = file_details.get("size", 0) / (1024 * 1024)
+        c4.metric("File Size", f"{size_mb:.2f} MB")
         
-        st.caption(f"File created: {time.ctime(file_stats.st_ctime)}")
+        st.image(img_rgb, caption="Source Image", use_container_width=True)
 
-    # Q2: Display
+    # --- TAB 2: FILTERS & EDGES (Combined App 1 & 2) ---
     with tabs[1]:
-        st.subheader("Original Representation")
-        st.image(frame_rgb, caption="Source Input")
+        col_f1, col_f2 = st.columns(2)
+        
+        with col_f1:
+            st.subheader("Grayscale")
+            gray_img = cv2.cvtColor(source_img, cv2.COLOR_BGR2GRAY)
+            st.image(gray_img, caption="Grayscale", use_container_width=True)
 
-    # Q3: B&W
+        with col_f2:
+            st.subheader("Canny Edge Detection")
+            st.caption("Adjust thresholds (From App 1)")
+            t_lower = st.slider("Lower Threshold", 0, 255, 100)
+            t_upper = st.slider("Upper Threshold", 0, 255, 200)
+            edges = cv2.Canny(gray_img, t_lower, t_upper)
+            st.image(edges, caption="Edge Map", use_container_width=True)
+
+    # --- TAB 3: GEOMETRY ---
     with tabs[2]:
-        st.subheader("Grayscale Conversion")
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        c1, c2 = st.columns(2)
-        c1.image(frame_rgb, caption="Original")
-        c2.image(gray_img, caption="Grayscale (Black & White)")
+        st.subheader("Transformations")
+        geo_col1, geo_col2 = st.columns([1, 2])
+        
+        with geo_col1:
+            tr_type = st.radio("Transformation Type:", ["Rotate 90° Clockwise", "Rotate 180°", "Mirror (Flip)"])
+        
+        with geo_col2:
+            if tr_type == "Rotate 90° Clockwise":
+                processed = cv2.rotate(source_img, cv2.ROTATE_90_CLOCKWISE)
+            elif tr_type == "Rotate 180°":
+                processed = cv2.rotate(source_img, cv2.ROTATE_180)
+            elif tr_type == "Mirror (Flip)":
+                processed = cv2.flip(source_img, 1)
+                
+            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
 
-    # Q5: Rotate
+    # --- TAB 4: AI DETECTION (From App 2) ---
     with tabs[3]:
-        st.subheader("Geometric Rotation")
-        rot_col1, rot_col2 = st.columns([1, 3])
-        with rot_col1:
-            angle = st.radio("Rotation Angle", ["90° Clockwise", "180°", "270° (90° CCW)"])
+        st.subheader("Object Contours")
         
-        with rot_col2:
-            if angle == "90° Clockwise":
-                rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-            elif angle == "180°":
-                rotated = cv2.rotate(img, cv2.ROTATE_180)
-            else:
-                rotated = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            st.image(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
-
-    # Q6: Mirror
-    with tabs[4]:
-        st.subheader("Mirror Effect")
-        mirror = cv2.flip(img, 1)
-        st.image(cv2.cvtColor(mirror, cv2.COLOR_BGR2RGB), caption="Horizontal Flip")
-
-    # Q7: Detection
-    with tabs[5]:
-        st.subheader("Object Detection")
+        d_col1, d_col2 = st.columns([1, 3])
+        with d_col1:
+            thresh_val = st.slider("Binarization Threshold", 0, 255, 127)
         
-        col_ctrl, col_view = st.columns([1, 3])
-        with col_ctrl:
-            thresh_val = st.slider("Threshold Sensitivity", 0, 255, 127)
-            st.caption("Adjust to filter background noise.")
-        
-        with col_view:
-            _, thresh = cv2.threshold(gray_img, thresh_val, 255, cv2.THRESH_BINARY)
+        with d_col2:
+            gray = cv2.cvtColor(source_img, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray, thresh_val, 255, cv2.THRESH_BINARY)
             contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             
-            detect_img = img.copy()
+            detect_img = source_img.copy()
             count = 0
-            
-            # Fixed Color (Green) since Sidebar control was removed
-            rgb_color = (0, 255, 0)
-            
             for cnt in contours:
-                if cv2.contourArea(cnt) > 500:
+                if cv2.contourArea(cnt) > 500: # Filter small noise
                     x, y, w_rect, h_rect = cv2.boundingRect(cnt)
-                    cv2.rectangle(detect_img, (x, y), (x + w_rect, y + h_rect), rgb_color, 2)
+                    cv2.rectangle(detect_img, (x, y), (x + w_rect, y + h_rect), (0, 255, 0), 2)
                     count += 1
             
-            st.image(cv2.cvtColor(detect_img, cv2.COLOR_BGR2RGB), caption=f"Found {count} Objects")
+            st.image(cv2.cvtColor(detect_img, cv2.COLOR_BGR2RGB), caption=f"Detected {count} Objects")
 
-    # Q9/10: Cuts
-    with tabs[6]:
+    # --- TAB 5: SPLITTING (Combined Logic) ---
+    with tabs[4]:
         st.subheader("Image Segmentation")
-        cut_type = st.selectbox("Select Cut Type", ["Vertical (80-20)", "Horizontal (70-30)"])
+        split_mode = st.selectbox("Choose Split:", ["Vertical (80/20)", "Horizontal (70/30)"])
         
-        if cut_type == "Vertical (80-20)":
-            split_x = int(w * 0.8)
-            col1, col2 = st.columns([4, 1])
-            col1.image(cv2.cvtColor(img[:, :split_x], cv2.COLOR_BGR2RGB), caption="Left 80%")
-            col2.image(cv2.cvtColor(img[:, split_x:], cv2.COLOR_BGR2RGB), caption="Right 20%")
-        else:
-            split_y = int(h * 0.7)
-            st.image(cv2.cvtColor(img[:split_y, :], cv2.COLOR_BGR2RGB), caption="Top 70%")
-            st.image(cv2.cvtColor(img[split_y:, :], cv2.COLOR_BGR2RGB), caption="Bottom 30%")
+        if split_mode == "Vertical (80/20)":
+            split = int(0.8 * w)
+            left = img_rgb[:, :split]
+            right = img_rgb[:, split:]
+            sc1, sc2 = st.columns([4, 1])
+            sc1.image(left, caption="Left 80%", use_container_width=True)
+            sc2.image(right, caption="Right 20%", use_container_width=True)
+            
+        elif split_mode == "Horizontal (70/30)":
+            split = int(0.7 * h)
+            top = img_rgb[:split, :]
+            bottom = img_rgb[split:, :]
+            st.image(top, caption="Top 70%", use_container_width=True)
+            st.image(bottom, caption="Bottom 30%", use_container_width=True)
 
-    # Q11: Grid
-    with tabs[7]:
-        st.subheader("Prime Number Grid")
-        st.markdown("Generates a 10x10 grid and blacks out cells where the cell index is a **Prime Number**.")
+    # --- TAB 6: PRIME GRID (Unique feature from App 2) ---
+    with tabs[5]:
+        st.subheader("Prime Number Grid Analysis")
+        st.write("Overlays a 10x10 grid and blacks out cells where the index is a prime number.")
         
-        grid_img = img.copy()
+        grid_img = source_img.copy()
         rows, cols = 10, 10
         step_h, step_w = h // rows, w // cols
         counter = 1
@@ -253,15 +232,14 @@ if video_path:
                 x1, x2 = c * step_w, (c + 1) * step_w
                 
                 if is_prime(counter):
-                    grid_img[y1:y2, x1:x2] = 0
+                    grid_img[y1:y2, x1:x2] = 0 # Black out prime cells
                 
-                # Grid Overlay
                 cv2.rectangle(grid_img, (x1, y1), (x2, y2), (200, 200, 200), 1)
                 cv2.putText(grid_img, str(counter), (x1+5, y1+20), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 1)
                 counter += 1
         
-        st.image(cv2.cvtColor(grid_img, cv2.COLOR_BGR2RGB))
+        st.image(cv2.cvtColor(grid_img, cv2.COLOR_BGR2RGB), use_container_width=True)
 
 else:
     # Empty State
-    st.info("👈 Please Upload a file in the main area to begin.")
+    st.info("👈 Waiting for Upload. Please select a mode and upload a file in the sidebar.")
