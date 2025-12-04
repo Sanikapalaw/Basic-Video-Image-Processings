@@ -74,31 +74,6 @@ def is_prime(num):
         if num % i == 0: return False
     return True
 
-def create_dummy_video(filename):
-    """Generates a sample video for testing."""
-    width, height = 640, 480
-    fps = 10
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
-
-    for i in range(30): # 30 frames
-        frame = np.full((height, width, 3), (20, 20, 20), dtype=np.uint8) # Dark background
-        
-        # Grid lines for professional look
-        cv2.line(frame, (0, 100), (640, 100), (50, 50, 50), 1)
-        cv2.line(frame, (0, 300), (640, 300), (50, 50, 50), 1)
-        
-        # Moving Element
-        cv2.rectangle(frame, (10 + i*15, 150), (110 + i*15, 250), (200, 200, 255), -1)
-        cv2.putText(frame, "Sample Video", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        
-        # Static Element
-        cv2.circle(frame, (500, 350), 60, (0, 255, 127), -1)
-        
-        out.write(frame)
-    out.release()
-    return filename
-
 # ==========================================
 # SIDEBAR CONTROLS
 # ==========================================
@@ -107,16 +82,7 @@ with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/10005/10005937.png", width=60)
     st.title("Control Panel")
     
-    st.subheader("1. Source Selection")
-    option = st.radio("Input Source:", ["Generate Test Video", "Upload Video"], label_visibility="collapsed")
-    
-    st.divider()
-    
-    st.subheader("2. Settings")
-    # Color customization
-    highlight_color = st.color_picker("Highlight Color", "#00FF00")
-    
-    st.info("Use this sidebar to configure input and analysis parameters.")
+    st.info("Upload a video in the main window to begin analysis.")
 
 # ==========================================
 # MAIN APP
@@ -134,18 +100,10 @@ col1, col2 = st.columns([1, 2])
 # --- Input Handling ---
 with col1:
     st.markdown("### Input Video")
-    if option == "Generate Test Video":
-        if st.button("🚀 Generate & Load Video", type="primary", use_container_width=True):
-            create_dummy_video(tfile.name)
-            st.success("Video Generated!")
-            video_path = tfile.name
-        elif os.path.exists(tfile.name) and os.path.getsize(tfile.name) > 0:
-             video_path = tfile.name
-    else:
-        uploaded_file = st.file_uploader("Upload MP4/AVI", type=["mp4", "avi", "mov"])
-        if uploaded_file is not None:
-            tfile.write(uploaded_file.read())
-            video_path = tfile.name
+    uploaded_file = st.file_uploader("Upload MP4/AVI", type=["mp4", "avi", "mov"])
+    if uploaded_file is not None:
+        tfile.write(uploaded_file.read())
+        video_path = tfile.name
 
 if video_path:
     with col1:
@@ -248,9 +206,8 @@ if video_path:
             detect_img = img.copy()
             count = 0
             
-            # Convert user hex color to RGB tuple
-            h_color = highlight_color.lstrip('#')
-            rgb_color = tuple(int(h_color[i:i+2], 16) for i in (0, 2, 4))
+            # Fixed Color (Green) since Sidebar control was removed
+            rgb_color = (0, 255, 0)
             
             for cnt in contours:
                 if cv2.contourArea(cnt) > 500:
@@ -302,4 +259,4 @@ if video_path:
 
 else:
     # Empty State
-    st.info("👈 Please Select 'Generate Test Video' or Upload a file in the sidebar to begin.")
+    st.info("👈 Please Upload a file in the main area to begin.")
