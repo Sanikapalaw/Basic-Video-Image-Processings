@@ -9,7 +9,7 @@ import tempfile
 # CONFIG & STYLING
 # ==========================================
 st.set_page_config(
-    page_title="Image Processing Lab",
+    page_title="Visual Analytics Studio",
     page_icon="🔬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -19,38 +19,43 @@ st.set_page_config(
 st.markdown("""
     <style>
     /* Main container styling */
-    .main {
-        background-color: #f8f9fa;
+    .stApp, .main {
+        background-color: #ffffff;
     }
     /* Headers */
     h1, h2, h3 {
-        color: #0e1117;
+        color: #000000 !important;
         font-family: 'Helvetica Neue', sans-serif;
     }
     h1 {
         font-weight: 700;
         border-bottom: 2px solid #4e8cff;
         padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    /* General Text - Force Black */
+    p, div, span, label, li {
+        color: #000000 !important;
     }
     /* Cards/Containers */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: #ffffff;
+        background-color: #f8f9fa;
         border-radius: 4px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         padding: 10px 20px;
     }
     .stTabs [aria-selected="true"] {
         background-color: #e3f2fd;
-        color: #1976d2;
+        color: #000000 !important;
         border-bottom: 2px solid #1976d2;
     }
     /* Metric styling */
     [data-testid="stMetricValue"] {
         font-size: 1.2rem;
-        color: #2c3e50;
+        color: #000000 !important;
     }
     /* Custom info box */
     .info-box {
@@ -59,6 +64,7 @@ st.markdown("""
         border-radius: 5px;
         border-left: 5px solid #2E86C1;
         margin-bottom: 20px;
+        color: #000000 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -88,8 +94,7 @@ with st.sidebar:
 # MAIN APP
 # ==========================================
 
-st.title("Image Processing Workbench")
-st.markdown('<div class="info-box">Welcome to the Practical 1 Analysis Tool. This application processes video input, extracts frames, and performs various computer vision transformations.</div>', unsafe_allow_html=True)
+st.title("Visual Analytics Studio")
 
 # --- Temp File Handling ---
 tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
