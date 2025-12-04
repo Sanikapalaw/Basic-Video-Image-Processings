@@ -70,7 +70,8 @@ if os.path.getsize(tfile.name) > 0:
         if ret:
             # Convert BGR (OpenCV) to RGB (Streamlit)
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            st.image(frame_rgb, caption=f"Extracted Frame {frame_idx}", use_container_width=True)
+            # REMOVED use_container_width=True so image stays at natural size (640x480)
+            st.image(frame_rgb, caption=f"Extracted Frame {frame_idx}")
             
             # Save extraction for processing
             img = frame # Keep in BGR for OpenCV processing steps below
@@ -91,13 +92,13 @@ if os.path.getsize(tfile.name) > 0:
     # Q2: Show Image
     with tabs[0]:
         st.subheader("Q2: Display Image")
-        st.image(frame_rgb, caption="Original Image (in.show)", use_container_width=True)
+        st.image(frame_rgb, caption="Original Image (in.show)")
 
     # Q3: Black and White
     with tabs[1]:
         st.subheader("Q3: Black and White")
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        st.image(gray_img, caption="Grayscale Image", use_container_width=True)
+        st.image(gray_img, caption="Grayscale Image")
 
     # Q4: Properties
     with tabs[2]:
@@ -123,13 +124,13 @@ if os.path.getsize(tfile.name) > 0:
         else:
             rotated = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
             
-        st.image(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB), caption=f"Rotated {angle}", use_container_width=True)
+        st.image(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB), caption=f"Rotated {angle}")
 
     # Q6: Mirror
     with tabs[4]:
         st.subheader("Q6: Mirror Image")
         mirror = cv2.flip(img, 1) # 1 = horizontal
-        st.image(cv2.cvtColor(mirror, cv2.COLOR_BGR2RGB), caption="Mirrored Image", use_container_width=True)
+        st.image(cv2.cvtColor(mirror, cv2.COLOR_BGR2RGB), caption="Mirrored Image")
 
     # Q7: Object Detection
     with tabs[5]:
@@ -148,7 +149,7 @@ if os.path.getsize(tfile.name) > 0:
                 count += 1
         
         st.write(f"Objects Detected: {count}")
-        st.image(cv2.cvtColor(detect_img, cv2.COLOR_BGR2RGB), caption="Detected Objects (Green Box)", use_container_width=True)
+        st.image(cv2.cvtColor(detect_img, cv2.COLOR_BGR2RGB), caption="Detected Objects (Green Box)")
 
     # Q9 & Q10: Cuts
     with tabs[6]:
@@ -158,16 +159,16 @@ if os.path.getsize(tfile.name) > 0:
         split_x = int(w * 0.8)
         col1, col2 = st.columns([8, 2])
         with col1:
-            st.image(cv2.cvtColor(img[:, :split_x], cv2.COLOR_BGR2RGB), caption="Left 80%", use_container_width=True)
+            st.image(cv2.cvtColor(img[:, :split_x], cv2.COLOR_BGR2RGB), caption="Left 80%")
         with col2:
-            st.image(cv2.cvtColor(img[:, split_x:], cv2.COLOR_BGR2RGB), caption="Right 20%", use_container_width=True)
+            st.image(cv2.cvtColor(img[:, split_x:], cv2.COLOR_BGR2RGB), caption="Right 20%")
 
         st.markdown("---")
         
         st.markdown("**Q10: Horizontal Cut (70% - 30%)**")
         split_y = int(h * 0.7)
-        st.image(cv2.cvtColor(img[:split_y, :], cv2.COLOR_BGR2RGB), caption="Top 70%", use_container_width=True)
-        st.image(cv2.cvtColor(img[split_y:, :], cv2.COLOR_BGR2RGB), caption="Bottom 30%", use_container_width=True)
+        st.image(cv2.cvtColor(img[:split_y, :], cv2.COLOR_BGR2RGB), caption="Top 70%")
+        st.image(cv2.cvtColor(img[split_y:, :], cv2.COLOR_BGR2RGB), caption="Bottom 30%")
 
     # Q11: Grid
     with tabs[7]:
@@ -197,7 +198,7 @@ if os.path.getsize(tfile.name) > 0:
                 
                 counter += 1
         
-        st.image(cv2.cvtColor(grid_img, cv2.COLOR_BGR2RGB), caption="Grid with Primes Removed", use_container_width=True)
+        st.image(cv2.cvtColor(grid_img, cv2.COLOR_BGR2RGB), caption="Grid with Primes Removed")
 
 else:
     st.info("Click 'Generate Video' or Upload a file to start.")
